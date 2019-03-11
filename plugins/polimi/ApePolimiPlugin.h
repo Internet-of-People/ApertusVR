@@ -70,8 +70,6 @@ namespace Ape
 
 		Ape::ISystemConfig* mpSystemConfig;
 
-		Ape::NodeWeakPtr mUserNode;
-
 		void eventCallBack(const Ape::Event& event);
 
 	public:

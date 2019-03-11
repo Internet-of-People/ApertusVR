@@ -8,7 +8,6 @@ Ape::ApePolimiPlugin::ApePolimiPlugin()
 	mpEventManager->connectEvent(Ape::Event::Group::NODE, std::bind(&ApePolimiPlugin::eventCallBack, this, std::placeholders::_1));
 	mpEventManager->connectEvent(Ape::Event::Group::GEOMETRY_RAY, std::bind(&ApePolimiPlugin::eventCallBack, this, std::placeholders::_1));
 	mpScene = Ape::ISceneManager::getSingletonPtr();
-	mUserNode = Ape::NodeWeakPtr();
 	APE_LOG_FUNC_LEAVE();
 }
 
@@ -179,9 +178,6 @@ void Ape::ApePolimiPlugin::eventCallBack(const Ape::Event& event)
 void Ape::ApePolimiPlugin::Init()
 {
 	APE_LOG_FUNC_ENTER();
-
-	if (auto userNode = mpScene->getNode(mpSystemConfig->getSceneSessionConfig().generatedUniqueUserNodeName).lock())
-		mUserNode = userNode;
 
 	createCoordinateSystem();
 

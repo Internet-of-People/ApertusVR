@@ -61,8 +61,6 @@ namespace Ape
 
 		Ape::ISceneManager* mpSceneManager;
 
-		Ape::IMainWindow* mpMainWindow;
-
 		Ape::ISystemConfig* mpSystemConfig;
 
 		Ape::CameraWeakPtr mCameraLeft;

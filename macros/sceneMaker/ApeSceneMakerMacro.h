@@ -20,40 +20,48 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.*/
 
-#ifndef APE_OCULUSDK2PLUGIN_H
-#define APE_OCULUSDK2PLUGIN_H
+#ifndef APE_SCENEMAKERMACRO_H
+#define APE_SCENEMAKERMACRO_H
 
-#include <chrono>
+#ifdef _WIN32
+#ifdef BUILDING_APE_SCENEMAKERMACRO_DLL
+#define APE_SCENEMAKERMACRO_DLL_EXPORT __declspec(dllexport)
+#else
+#define APE_SCENEMAKERMACRO_DLL_EXPORT __declspec(dllimport)
+#endif
+#else
+#define APE_SCENEMAKERMACRO_DLL_EXPORT 
+#endif
+
 #include <iostream>
-#include <memory>
 #include <thread>
-#include "system/ApeIMainWindow.h"
+#include <chrono>
+#include <random>
+#include <memory>
 #include "plugin/ApePluginAPI.h"
 #include "managers/ApeIEventManager.h"
 #include "managers/ApeILogManager.h"
 #include "managers/ApeISceneManager.h"
-#include "managers/ApeISystemConfig.h"
-#include "datatypes/ApeMatrix4.h"
-#include "sceneelements/ApeICamera.h"
-#include "sceneelements/ApeIConeGeometry.h"
-#include "sceneelements/ApeIFileGeometry.h"
-#include "sceneelements/ApeIFileMaterial.h"
-#include "sceneelements/ApeIIndexedFaceSetGeometry.h"
-#include "sceneelements/ApeIManualMaterial.h"
-#include "sceneelements/ApeIManualMaterial.h"
-#include "sceneelements/ApeIManualPass.h"
-#include "sceneelements/ApeIManualTexture.h"
 #include "sceneelements/ApeINode.h"
+#include "sceneelements/ApeILight.h"
 #include "sceneelements/ApeITextGeometry.h"
-#include "ApeUserInputMacro.h"
-#include "OVR.h"
-
-#define THIS_PLUGINNAME "ApeOculusDK2Plugin"
+#include "sceneelements/ApeIFileGeometry.h"
+#include "sceneelements/ApeIPlaneGeometry.h"
+#include "sceneelements/ApeITubeGeometry.h"
+#include "sceneelements/ApeIIndexedLineSetGeometry.h"
+#include "sceneelements/ApeIIndexedFaceSetGeometry.h"
+#include "sceneelements/ApeIConeGeometry.h"
+#include "sceneelements/ApeIFileMaterial.h"
+#include "sceneelements/ApeIManualMaterial.h"
+#include "sceneelements/ApeICamera.h"
+#include "managers/ApeISystemConfig.h"
+#include "utils/ApeInterpolator.h"
+#include "utils/ApeSingleton.h"
 
 namespace Ape
 {
-	class ApeOculusDK2Plugin : public Ape::IPlugin
-	{
+    class APE_SCENEMAKERMACRO_DLL_EXPORT SceneMakerMacro : public Singleton<SceneMakerMacro>
+    {
 	private:
 		Ape::IEventManager* mpEventManager;
 
@@ -61,58 +69,38 @@ namespace Ape
 
 		Ape::ISystemConfig* mpSystemConfig;
 
-		ovrHmd mpHMD;
-
-		ovrFrameTiming mHMDFrameTiming;
-
-		Ape::CameraWeakPtr mCameraLeft;
-
-		Ape::CameraWeakPtr mCameraRight;
-
-		Ape::UserInputMacro* mpApeUserInputMacro;
-
-		Ape::UserInputMacro::Pose mUserInputMacroPose;
+		std::vector<std::unique_ptr<Ape::Interpolator>> mInterpolators;
 
 		void eventCallBack(const Ape::Event& event);
 
-		Ape::Matrix4 conversionFromOVR(ovrMatrix4f ovrMatrix4);
-
 	public:
-		ApeOculusDK2Plugin();
+		SceneMakerMacro();
 
-		~ApeOculusDK2Plugin();
+		~SceneMakerMacro();
 
-		void Init() override;
+		void makeLit();
 
-		void Run() override;
+		void makeGround();
 
-		void Step() override;
+		void makeModel();
 
-		void Stop() override;
+		void makeBrowser();
 
-		void Suspend() override;
+		void makeSky();
 
-		void Restart() override;
-	};
+		void makeBackground();
 
-	APE_PLUGIN_FUNC Ape::IPlugin* CreateApeOculusDK2Plugin()
-	{
-		return new Ape::ApeOculusDK2Plugin;
-	}
+		void makeWater();
 
-	APE_PLUGIN_FUNC void DestroyApeOculusDK2Plugin(Ape::IPlugin *plugin)
-	{
-		delete (Ape::ApeOculusDK2Plugin*)plugin;
-	}
+		void makeTerrain();
 
-	APE_PLUGIN_DISPLAY_NAME(THIS_PLUGINNAME);
+		void makeCoordinateSystem();
 
-	APE_PLUGIN_ALLOC()
-	{
-		APE_LOG_DEBUG(THIS_PLUGINNAME << "_CREATE");
-		ApeRegisterPlugin(THIS_PLUGINNAME, CreateApeOculusDK2Plugin, DestroyApeOculusDK2Plugin);
-		return 0;
-	}
+		void makeBox(std::string name);
+
+		void interpolate(Ape::NodeWeakPtr node, Ape::Vector3 position, Ape::Quaternion orientation, unsigned int milliseconds);
+
+    };
 }
 
 #endif

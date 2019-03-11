@@ -92,11 +92,9 @@ namespace Ape
 
 		int mPointCloudSize;
 
-		Ape::NodeWeakPtr mUserNode;
-
 		void createLights();
 
-		void createSkyBox();
+		void createSkyBox(); //TODO_MACRO
 
 		void createCoordinateSystem();
 

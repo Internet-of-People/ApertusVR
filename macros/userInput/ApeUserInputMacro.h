@@ -23,6 +23,16 @@ SOFTWARE.*/
 #ifndef APE_USERINPUTMACRO_H
 #define APE_USERINPUTMACRO_H
 
+#ifdef _WIN32
+#ifdef BUILDING_APE_USERINPUTMACRO_DLL
+#define APE_USERINPUTMACRO_DLL_EXPORT __declspec(dllexport)
+#else
+#define APE_USERINPUTMACRO_DLL_EXPORT __declspec(dllimport)
+#endif
+#else
+#define APE_USERINPUTMACRO_DLL_EXPORT 
+#endif
+
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -41,10 +51,12 @@ SOFTWARE.*/
 #include "sceneelements/ApeIManualMaterial.h"
 #include "sceneelements/ApeICamera.h"
 #include "managers/ApeISystemConfig.h"
+#include "utils/ApeInterpolator.h"
+#include "utils/ApeSingleton.h"
 
 namespace Ape
 {
-    class UserInputMacro
+    class APE_USERINPUTMACRO_DLL_EXPORT UserInputMacro : public Singleton<UserInputMacro>
     {
 	public: 
 		struct Pose
@@ -57,10 +69,7 @@ namespace Ape
 
 			Ape::Quaternion headOrientation;
 
-			Pose()
-			{
-
-			}
+			Pose() {}
 
 			Pose(Ape::Vector3 userPosition, Ape::Quaternion userOrientation, Ape::Vector3 headPosition, Ape::Quaternion headOrientation)
 			{
@@ -84,6 +93,8 @@ namespace Ape
 
 		Ape::NodeWeakPtr mHeadNode;
 
+		Ape::TextGeometryWeakPtr mOverlayText;
+
 		std::map<std::string, Ape::CameraWeakPtr> mCameras;
 
 		Ape::ManualMaterialWeakPtr mUserMaterial;
@@ -97,7 +108,17 @@ namespace Ape
 
 		void updateViewPose(Pose pose);
 
+		void interpolateViewPose(Pose pose, unsigned int milliseconds);
+
+		Ape::NodeWeakPtr getUserNode();
+
+		Ape::NodeWeakPtr getHeadNode();
+
 		Ape::CameraWeakPtr createCamera(std::string name);
+
+		void createOverLayText(std::string caption);
+
+		void updateOverLayText(std::string caption);
     };
 }
 

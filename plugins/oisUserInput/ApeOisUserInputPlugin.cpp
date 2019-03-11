@@ -35,7 +35,8 @@ Ape::OISUserInputPlugin::OISUserInputPlugin()
 	mUserNodePosesToggleIndex = 0;
 	mIsKeyPressed = false;
 	mIsUserNodeAnimated = false;
-	mpApeUserInputMacro = new UserInputMacro();
+	mpApeUserInputMacro = Ape::UserInputMacro::getSingletonPtr();
+	mUserInputMacroPose = Ape::UserInputMacro::Pose();
 	fillUserNodeAnimatePoses();
 	APE_LOG_FUNC_LEAVE();
 }
@@ -370,17 +371,17 @@ void Ape::OISUserInputPlugin::Init()
 		}
 	}
 
-	if (auto rayNode = mpSceneManager->createNode("rayNode" + mpSystemConfig->getSceneSessionConfig().generatedUniqueUserNodeName).lock())
-	{
-		if (auto rayGeometry = std::static_pointer_cast<Ape::IRayGeometry>(mpSceneManager->createEntity("rayQuery" + mpSystemConfig->getSceneSessionConfig().generatedUniqueUserNodeName, Ape::Entity::GEOMETRY_RAY).lock()))
-		{
-			rayGeometry->setIntersectingEnabled(true);
-			rayGeometry->setParentNode(rayNode);
-			mRayGeometry = rayGeometry;
-		}
-		//rayNode->setParentNode(mUserNode);
-		mRayOverlayNode = rayNode;
-	}
+	//if (auto rayNode = mpSceneManager->createNode("rayNode" + mpSystemConfig->getSceneSessionConfig().generatedUniqueUserNodeName).lock())
+	//{
+	//	if (auto rayGeometry = std::static_pointer_cast<Ape::IRayGeometry>(mpSceneManager->createEntity("rayQuery" + mpSystemConfig->getSceneSessionConfig().generatedUniqueUserNodeName, Ape::Entity::GEOMETRY_RAY).lock()))
+	//	{
+	//		rayGeometry->setIntersectingEnabled(true);
+	//		rayGeometry->setParentNode(rayNode);
+	//		mRayGeometry = rayGeometry;
+	//	}
+	//	//rayNode->setParentNode(mUserNode);
+	//	mRayOverlayNode = rayNode;
+	//}
 
 	APE_LOG_FUNC_LEAVE();
 }

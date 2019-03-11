@@ -1,94 +1,33 @@
-#include <fstream>
-#include "ApeRobotCalibrationPlugin.h"
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"
+#include <iostream>
+#include "ApeSceneMakerMacro.h"
 
-Ape::ApeRobotCalibrationPlugin::ApeRobotCalibrationPlugin()
+Ape::SceneMakerMacro::SceneMakerMacro()
 {
 	APE_LOG_FUNC_ENTER();
 	mpSystemConfig = Ape::ISystemConfig::getSingletonPtr();
 	mpEventManager = Ape::IEventManager::getSingletonPtr();
-	mpEventManager->connectEvent(Ape::Event::Group::NODE, std::bind(&ApeRobotCalibrationPlugin::eventCallBack, this, std::placeholders::_1));
+	mpEventManager->connectEvent(Ape::Event::Group::NODE, std::bind(&SceneMakerMacro::eventCallBack, this, std::placeholders::_1));
 	mpSceneManager = Ape::ISceneManager::getSingletonPtr();
-	mInterpolators = std::vector<std::unique_ptr<Ape::Interpolator>>();
-	mPointCloud = Ape::PointCloudWeakPtr();
 	APE_LOG_FUNC_LEAVE();
 }
 
-Ape::ApeRobotCalibrationPlugin::~ApeRobotCalibrationPlugin()
+Ape::SceneMakerMacro::~SceneMakerMacro()
 {
 	APE_LOG_FUNC_ENTER();
-	mpEventManager->disconnectEvent(Ape::Event::Group::NODE, std::bind(&ApeRobotCalibrationPlugin::eventCallBack, this, std::placeholders::_1));
 	APE_LOG_FUNC_LEAVE();
 }
 
-void Ape::ApeRobotCalibrationPlugin::parseNodeJsConfig()
-{
-	APE_LOG_FUNC_ENTER();
-	std::stringstream fileFullPath;
-	fileFullPath << mpSystemConfig->getFolderPath() << "/ApeNodeJsPlugin.json";
-	FILE* configFile = std::fopen(fileFullPath.str().c_str(), "r");
-	char readBuffer[65536];
-	if (configFile)
-	{
-		rapidjson::FileReadStream jsonFileReaderStream(configFile, readBuffer, sizeof(readBuffer));
-		rapidjson::Document jsonDocument;
-		jsonDocument.ParseStream(jsonFileReaderStream);
-		if (jsonDocument.IsObject() && jsonDocument.HasMember("httpServer"))
-		{
-			rapidjson::Value& httpServer = jsonDocument["httpServer"];
-			if (httpServer.IsObject() && httpServer.HasMember("port"))
-			{
-				rapidjson::Value& port = httpServer["port"];
-				if (port.IsNumber())
-				{
-					mNodeJsPluginConfig.serverPort = port.GetInt();
-				}
-			}
-		}
-		fclose(configFile);
-	}
-	APE_LOG_FUNC_LEAVE();
-}
-
-void Ape::ApeRobotCalibrationPlugin::createOverlayBrowser()
-{
-	APE_LOG_FUNC_ENTER();
-	parseNodeJsConfig();
-	if (auto browser = std::static_pointer_cast<Ape::IBrowser>(mpSceneManager->createEntity("overlay_frame", Ape::Entity::BROWSER).lock()))
-	{
-		browser->setResoultion(1280, 720);
-		std::stringstream url;
-		url << "http://localhost:" << mNodeJsPluginConfig.serverPort << "/robotCalibration/public/";
-		browser->setURL(url.str());
-		browser->showOnOverlay(true, 0);
-		if (auto mouseMaterial = std::static_pointer_cast<Ape::IManualMaterial>(mpSceneManager->createEntity("mouseMaterial", Ape::Entity::MATERIAL_MANUAL).lock()))
-		{
-			mouseMaterial->setEmissiveColor(Ape::Color(1.0f, 1.0f, 1.0f));
-			mouseMaterial->setSceneBlending(Ape::Pass::SceneBlendingType::TRANSPARENT_ALPHA);
-			//mouseMaterial->setLightingEnabled(false); crash in OpenGL
-			if (auto mouseTexture = std::static_pointer_cast<Ape::IUnitTexture>(mpSceneManager->createEntity("mouseTexture", Ape::Entity::TEXTURE_UNIT).lock()))
-			{
-				mouseTexture->setParameters(mouseMaterial, "browserpointer.png");
-				mouseTexture->setTextureAddressingMode(Ape::Texture::AddressingMode::CLAMP);
-				mouseTexture->setTextureFiltering(Ape::Texture::Filtering::POINT, Ape::Texture::Filtering::LINEAR, Ape::Texture::Filtering::F_NONE);
-			}
-			mouseMaterial->showOnOverlay(true, 1);
-		}
-	}
-	APE_LOG_FUNC_LEAVE();
-}
-
-void Ape::ApeRobotCalibrationPlugin::createLights()
+void Ape::SceneMakerMacro::makeLit()
 {
 	APE_LOG_FUNC_ENTER();
 	if (auto light = std::static_pointer_cast<Ape::ILight>(mpSceneManager->createEntity("light", Ape::Entity::LIGHT).lock()))
 	{
-		light->setLightType(Ape::Light::Type::POINT);
-		light->setLightDirection(Ape::Vector3(0, 0, 0));
+		light->setLightType(Ape::Light::Type::DIRECTIONAL);
+		light->setLightDirection(Ape::Vector3(1, -1, 0));
 		light->setDiffuseColor(Ape::Color(0.35f, 0.35f, 0.35f));
 		light->setSpecularColor(Ape::Color(0.35f, 0.35f, 0.35f));
 	}
+
 	if (auto light = std::static_pointer_cast<Ape::ILight>(mpSceneManager->createEntity("light2", Ape::Entity::LIGHT).lock()))
 	{
 		light->setLightType(Ape::Light::Type::DIRECTIONAL);
@@ -113,7 +52,40 @@ void Ape::ApeRobotCalibrationPlugin::createLights()
 	APE_LOG_FUNC_LEAVE();
 }
 
-void Ape::ApeRobotCalibrationPlugin::createSkyBox()
+void Ape::SceneMakerMacro::makeGround()
+{
+	APE_LOG_FUNC_ENTER();
+	if (auto planeNode = mpSceneManager->createNode("planeNode").lock())
+	{
+		planeNode->setPosition(Ape::Vector3(0, -20, 0));
+		if (auto planeMaterial = std::static_pointer_cast<Ape::IManualMaterial>(mpSceneManager->createEntity("planeMaterial", Ape::Entity::MATERIAL_MANUAL).lock()))
+		{
+			planeMaterial->setDiffuseColor(Ape::Color(0.1f, 0.1f, 0.1f));
+			planeMaterial->setSpecularColor(Ape::Color(0.3f, 0.3f, 0.2f));
+			if (auto plane = std::static_pointer_cast<Ape::IPlaneGeometry>(mpSceneManager->createEntity("plane", Ape::Entity::GEOMETRY_PLANE).lock()))
+			{
+				plane->setParameters(Ape::Vector2(1, 1), Ape::Vector2(1000, 1000), Ape::Vector2(1, 1));
+				plane->setParentNode(planeNode);
+				plane->setMaterial(planeMaterial);
+			}
+		}
+	}
+	APE_LOG_FUNC_LEAVE();
+}
+
+void Ape::SceneMakerMacro::makeModel()
+{
+}
+
+void Ape::SceneMakerMacro::makeBrowser()
+{
+}
+
+void Ape::SceneMakerMacro::makeSky()
+{
+}
+
+void Ape::SceneMakerMacro::makeBackground()
 {
 	APE_LOG_FUNC_ENTER();
 	if (auto skyBoxMaterial = std::static_pointer_cast<Ape::IFileMaterial>(mpSceneManager->createEntity("skyBox", Ape::Entity::MATERIAL_FILE).lock()))
@@ -124,43 +96,34 @@ void Ape::ApeRobotCalibrationPlugin::createSkyBox()
 	APE_LOG_FUNC_LEAVE();
 }
 
-void Ape::ApeRobotCalibrationPlugin::createCoordinateSystem()
+void Ape::SceneMakerMacro::makeWater()
 {
-	APE_LOG_FUNC_ENTER();
+}
+
+void Ape::SceneMakerMacro::makeTerrain()
+{
+}
+
+void Ape::SceneMakerMacro::makeCoordinateSystem()
+{
 	std::shared_ptr<Ape::IManualMaterial> coordinateSystemArrowXMaterial;
-	if (coordinateSystemArrowXMaterial = std::static_pointer_cast<Ape::IManualMaterial>(mpSceneManager->createEntity("coordinateSystemArrowXMaterial", Ape::Entity::MATERIAL_MANUAL).lock()))
+	if (coordinateSystemArrowXMaterial = std::static_pointer_cast<Ape::IManualMaterial>(mpSceneManager->createEntity("SystemArrowXMaterial", Ape::Entity::MATERIAL_MANUAL).lock()))
 	{
-		if (auto coordinateSystemArrowXMaterialManualPass = std::static_pointer_cast<Ape::IManualPass>(mpSceneManager->createEntity("coordinateSystemArrowXMaterialManualPass", Ape::Entity::PASS_MANUAL).lock()))
-		{
-			coordinateSystemArrowXMaterialManualPass->setShininess(15.0f);
-			coordinateSystemArrowXMaterialManualPass->setDiffuseColor(Ape::Color(1.0f, 0.0f, 0.0f));
-			coordinateSystemArrowXMaterialManualPass->setSpecularColor(Ape::Color(1.0f, 0.0f, 0.0f));
-			coordinateSystemArrowXMaterial->setPass(coordinateSystemArrowXMaterialManualPass);
-		}
+		coordinateSystemArrowXMaterial->setDiffuseColor(Ape::Color(1.0f, 0.0f, 0.0f));
+		coordinateSystemArrowXMaterial->setSpecularColor(Ape::Color(1.0f, 0.0f, 0.0f));
 	}
 	std::shared_ptr<Ape::IManualMaterial> coordinateSystemArrowYMaterial;
 	if (coordinateSystemArrowYMaterial = std::static_pointer_cast<Ape::IManualMaterial>(mpSceneManager->createEntity("coordinateSystemArrowYMaterial", Ape::Entity::MATERIAL_MANUAL).lock()))
 	{
-		if (auto coordinateSystemArrowYMaterialManualPass = std::static_pointer_cast<Ape::IManualPass>(mpSceneManager->createEntity("coordinateSystemArrowYMaterialManualPass", Ape::Entity::PASS_MANUAL).lock()))
-		{
-			coordinateSystemArrowYMaterialManualPass->setShininess(15.0f);
-			coordinateSystemArrowYMaterialManualPass->setDiffuseColor(Ape::Color(0.0f, 1.0f, 0.0f));
-			coordinateSystemArrowYMaterialManualPass->setSpecularColor(Ape::Color(0.0f, 1.0f, 0.0f));
-			coordinateSystemArrowYMaterial->setPass(coordinateSystemArrowYMaterialManualPass);
-		}
+		coordinateSystemArrowYMaterial->setDiffuseColor(Ape::Color(0.0f, 1.0f, 0.0f));
+		coordinateSystemArrowYMaterial->setSpecularColor(Ape::Color(0.0f, 1.0f, 0.0f));
 	}
 	std::shared_ptr<Ape::IManualMaterial> coordinateSystemArrowZMaterial;
 	if (coordinateSystemArrowZMaterial = std::static_pointer_cast<Ape::IManualMaterial>(mpSceneManager->createEntity("coordinateSystemArrowZMaterial", Ape::Entity::MATERIAL_MANUAL).lock()))
 	{
-		if (auto coordinateSystemArrowZMaterialManualPass = std::static_pointer_cast<Ape::IManualPass>(mpSceneManager->createEntity("coordinateSystemArrowZMaterialManualPass", Ape::Entity::PASS_MANUAL).lock()))
-		{
-			coordinateSystemArrowZMaterialManualPass->setShininess(15.0f);
-			coordinateSystemArrowZMaterialManualPass->setDiffuseColor(Ape::Color(0.0f, 0.0f, 1.0f));
-			coordinateSystemArrowZMaterialManualPass->setSpecularColor(Ape::Color(0.0f, 0.0f, 1.0f));
-			coordinateSystemArrowZMaterial->setPass(coordinateSystemArrowZMaterialManualPass);
-		}
+		coordinateSystemArrowZMaterial->setDiffuseColor(Ape::Color(0.0f, 0.0f, 1.0f));
+		coordinateSystemArrowZMaterial->setSpecularColor(Ape::Color(0.0f, 0.0f, 1.0f));
 	}
-
 	if (auto coordinateSystemNode = mpSceneManager->createNode("coordinateSystemNode").lock())
 	{
 		if (auto coordinateSystemArrowXTubeNode = mpSceneManager->createNode("coordinateSystemArrowXTubeNode").lock())
@@ -183,14 +146,14 @@ void Ape::ApeRobotCalibrationPlugin::createCoordinateSystem()
 					coordinateSystemArrowXCone->setParameters(2.5f, 2.5f, 1.0f, Ape::Vector2(1, 1));
 					coordinateSystemArrowXCone->setParentNode(coordinateSystemArrowXConeNode);
 					coordinateSystemArrowXCone->setMaterial(coordinateSystemArrowXMaterial);
-					if (auto coordinateSystemXTextNode = mpSceneManager->createNode("coordinateSystemXTextNode").lock())
+					if (auto textNode = mpSceneManager->createNode("coordinateSystemXText_Node").lock())
 					{
-						coordinateSystemXTextNode->setParentNode(coordinateSystemArrowXConeNode);
-						coordinateSystemXTextNode->setPosition(Ape::Vector3(0, 0, 5));
-						if (auto coordinateSystemXText = std::static_pointer_cast<Ape::ITextGeometry>(mpSceneManager->createEntity("coordinateSystemXText", Ape::Entity::GEOMETRY_TEXT).lock()))
+						textNode->setParentNode(coordinateSystemArrowXConeNode);
+						textNode->setPosition(Ape::Vector3(0.0f, 10.0f, 0.0f));
+						if (auto text = std::static_pointer_cast<Ape::ITextGeometry>(mpSceneManager->createEntity("coordinateSystemXText", Ape::Entity::GEOMETRY_TEXT).lock()))
 						{
-							coordinateSystemXText->setCaption("X");
-							coordinateSystemXText->setParentNode(coordinateSystemXTextNode);
+							text->setCaption("X");
+							text->setParentNode(textNode);
 						}
 					}
 					if (auto coordinateSystemArrowXExtension = std::static_pointer_cast<Ape::IIndexedLineSetGeometry>(mpSceneManager->createEntity("coordinateSystemArrowXExtension", Ape::Entity::GEOMETRY_INDEXEDLINESET).lock()))
@@ -225,14 +188,14 @@ void Ape::ApeRobotCalibrationPlugin::createCoordinateSystem()
 					coordinateSystemArrowYCone->setParameters(2.5f, 2.5f, 1.0f, Ape::Vector2(1, 1));
 					coordinateSystemArrowYCone->setParentNode(coordinateSystemArrowYConeNode);
 					coordinateSystemArrowYCone->setMaterial(coordinateSystemArrowYMaterial);
-					if (auto coordinateSystemYTextNode = mpSceneManager->createNode("coordinateSystemYTextNode").lock())
+					if (auto textNode = mpSceneManager->createNode("coordinateSystemYText_Node").lock())
 					{
-						coordinateSystemYTextNode->setParentNode(coordinateSystemArrowYConeNode);
-						coordinateSystemYTextNode->setPosition(Ape::Vector3(0, 0, 5));
-						if (auto coordinateSystemYText = std::static_pointer_cast<Ape::ITextGeometry>(mpSceneManager->createEntity("coordinateSystemYText", Ape::Entity::GEOMETRY_TEXT).lock()))
+						textNode->setParentNode(coordinateSystemArrowYConeNode);
+						textNode->setPosition(Ape::Vector3(0.0f, 10.0f, 0.0f));
+						if (auto text = std::static_pointer_cast<Ape::ITextGeometry>(mpSceneManager->createEntity("coordinateSystemYText", Ape::Entity::GEOMETRY_TEXT).lock()))
 						{
-							coordinateSystemYText->setCaption("Y");
-							coordinateSystemYText->setParentNode(coordinateSystemYTextNode);
+							text->setCaption("Y");
+							text->setParentNode(textNode);
 						}
 					}
 					if (auto coordinateSystemArrowYExtension = std::static_pointer_cast<Ape::IIndexedLineSetGeometry>(mpSceneManager->createEntity("coordinateSystemArrowYExtension", Ape::Entity::GEOMETRY_INDEXEDLINESET).lock()))
@@ -268,14 +231,14 @@ void Ape::ApeRobotCalibrationPlugin::createCoordinateSystem()
 					coordinateSystemArrowZCone->setParameters(2.5f, 2.5f, 1.0f, Ape::Vector2(1, 1));
 					coordinateSystemArrowZCone->setParentNode(coordinateSystemArrowZConeNode);
 					coordinateSystemArrowZCone->setMaterial(coordinateSystemArrowZMaterial);
-					if (auto coordinateSystemZTextNode = mpSceneManager->createNode("coordinateSystemZTextNode").lock())
+					if (auto textNode = mpSceneManager->createNode("coordinateSystemZText_Node").lock())
 					{
-						coordinateSystemZTextNode->setParentNode(coordinateSystemArrowZConeNode);
-						coordinateSystemZTextNode->setPosition(Ape::Vector3(5, 0, 0));
-						if (auto coordinateSystemXText = std::static_pointer_cast<Ape::ITextGeometry>(mpSceneManager->createEntity("coordinateSystemZText", Ape::Entity::GEOMETRY_TEXT).lock()))
+						textNode->setParentNode(coordinateSystemArrowZConeNode);
+						textNode->setPosition(Ape::Vector3(0.0f, 10.0f, 0.0f));
+						if (auto text = std::static_pointer_cast<Ape::ITextGeometry>(mpSceneManager->createEntity("coordinateSystemZText", Ape::Entity::GEOMETRY_TEXT).lock()))
 						{
-							coordinateSystemXText->setCaption("Z");
-							coordinateSystemXText->setParentNode(coordinateSystemZTextNode);
+							text->setCaption("Z");
+							text->setParentNode(textNode);
 						}
 					}
 					if (auto coordinateSystemArrowZExtension = std::static_pointer_cast<Ape::IIndexedLineSetGeometry>(mpSceneManager->createEntity("coordinateSystemArrowZExtension", Ape::Entity::GEOMETRY_INDEXEDLINESET).lock()))
@@ -292,50 +255,73 @@ void Ape::ApeRobotCalibrationPlugin::createCoordinateSystem()
 			}
 		}
 	}
-	APE_LOG_FUNC_LEAVE();
 }
 
-void Ape::ApeRobotCalibrationPlugin::eventCallBack(const Ape::Event& event)
+void Ape::SceneMakerMacro::makeBox(std::string name)
 {
-
+	if (auto material = std::static_pointer_cast<Ape::IManualMaterial>(mpSceneManager->createEntity(name + "Material", Ape::Entity::MATERIAL_MANUAL).lock()))
+	{
+		material->setDiffuseColor(Ape::Color(1.0f, 0.0f, 0.0f));
+		material->setSpecularColor(Ape::Color(1.0f, 0.0f, 0.0f));
+		if (auto node = mpSceneManager->createNode(name + "Node").lock())
+		{
+			if (auto box = std::static_pointer_cast<Ape::IIndexedFaceSetGeometry>(mpSceneManager->createEntity(name, Ape::Entity::GEOMETRY_INDEXEDFACESET).lock()))
+			{
+				Ape::GeometryCoordinates coordinates = {
+					10,  10, -10,
+					10, -10, -10,
+					-10, -10, -10,
+					-10,  10, -10,
+					10,  10,  10,
+					10, -10,  10,
+					-10, -10,  10,
+					-10,  10,  10
+				};
+				Ape::GeometryIndices indices = {
+					0, 1, 2, 3, -1,
+					4, 7, 6, 5, -1,
+					0, 4, 5, 1, -1,
+					1, 5, 6, 2, -1,
+					2, 6, 7, 3, -1,
+					4, 0, 3, 7, -1 };
+				box->setParameters("", coordinates, indices, Ape::GeometryNormals(), true, Ape::GeometryColors(), Ape::GeometryTextureCoordinates(), material);
+				box->setParentNode(node);
+			}
+		}
+	}
 }
 
-void Ape::ApeRobotCalibrationPlugin::Init()
+void Ape::SceneMakerMacro::interpolate(Ape::NodeWeakPtr node, Ape::Vector3 position, Ape::Quaternion orientation, unsigned int milliseconds)
 {
-	APE_LOG_FUNC_ENTER();
-	createOverlayBrowser();
-	createSkyBox(); //TODO_MACRO
-	createLights();
-	createCoordinateSystem();
-	APE_LOG_FUNC_LEAVE();
+	if (auto nodeSP = node.lock())
+	{
+		auto moveInterpolator = std::make_unique<Ape::Interpolator>(false);
+		moveInterpolator->addSection(
+			nodeSP->getPosition(),
+			position,
+			milliseconds * 1000,
+			[&](Ape::Vector3 pos) { nodeSP->setPosition(pos); }
+		);
+		auto rotateInterpolator = std::make_unique<Ape::Interpolator>(false);
+		rotateInterpolator->addSection(
+			nodeSP->getOrientation(),
+			orientation,
+			milliseconds * 1000,
+			[&](Ape::Quaternion ori) { nodeSP->setOrientation(ori); }
+		);
+		while (!moveInterpolator->isQueueEmpty() && !rotateInterpolator->isQueueEmpty())
+		{
+			if (!moveInterpolator->isQueueEmpty())
+				moveInterpolator->iterateTopSection();
+			if (!rotateInterpolator->isQueueEmpty())
+				rotateInterpolator->iterateTopSection();
+		}
+	}
 }
 
-void Ape::ApeRobotCalibrationPlugin::Run()
+void Ape::SceneMakerMacro::eventCallBack(const Ape::Event& event)
 {
-	APE_LOG_FUNC_ENTER();
-	APE_LOG_FUNC_LEAVE();
+	
 }
 
-void Ape::ApeRobotCalibrationPlugin::Step()
-{
-	APE_LOG_FUNC_ENTER();
-	APE_LOG_FUNC_LEAVE();
-}
 
-void Ape::ApeRobotCalibrationPlugin::Stop()
-{
-	APE_LOG_FUNC_ENTER();
-	APE_LOG_FUNC_LEAVE();
-}
-
-void Ape::ApeRobotCalibrationPlugin::Suspend()
-{
-	APE_LOG_FUNC_ENTER();
-	APE_LOG_FUNC_LEAVE();
-}
-
-void Ape::ApeRobotCalibrationPlugin::Restart()
-{
-	APE_LOG_FUNC_ENTER();
-	APE_LOG_FUNC_LEAVE();
-}

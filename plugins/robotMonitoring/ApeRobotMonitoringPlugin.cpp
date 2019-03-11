@@ -8,7 +8,6 @@ Ape::ApeRobotMonitoringPlugin::ApeRobotMonitoringPlugin()
 	mpEventManager->connectEvent(Ape::Event::Group::CAMERA, std::bind(&ApeRobotMonitoringPlugin::eventCallBack, this, std::placeholders::_1));
 	mpEventManager->connectEvent(Ape::Event::Group::NODE, std::bind(&ApeRobotMonitoringPlugin::eventCallBack, this, std::placeholders::_1));
 	mpSceneManager = Ape::ISceneManager::getSingletonPtr();
-	mpMainWindow = Ape::IMainWindow::getSingletonPtr();
 	APE_LOG_FUNC_LEAVE();
 }
 

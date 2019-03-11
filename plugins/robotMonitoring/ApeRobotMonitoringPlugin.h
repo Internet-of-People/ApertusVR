@@ -69,10 +69,6 @@ namespace Ape
 
 		void eventCallBack(const Ape::Event& event);
 
-		Ape::NodeWeakPtr mUserNode;
-
-		Ape::IMainWindow* mpMainWindow;
-
 	public:
 		ApeRobotMonitoringPlugin();
 

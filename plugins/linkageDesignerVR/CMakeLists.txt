@@ -93,7 +93,7 @@ set_property (TARGET ApeLinkageDesignerVRPlugin PROPERTY COMPILE_DEFINITIONS APE
 set_property (TARGET ApeLinkageDesignerVRPlugin PROPERTY FOLDER "Plugins")
 
 if (WIN32)
-	# todo are there any solution for doing this platform idependent way? maybe ogre install? sdk?
+	# todo_ApeLinkageDesignerVRPlugin are there any solution for doing this platform idependent way? maybe ogre install? sdk?
 	# Copying the ois bins to the desired place
 	# debug dlls
 	if(NOT EXISTS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/debug/OIS_d.lib)

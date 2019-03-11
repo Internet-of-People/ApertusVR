@@ -1,6 +1,6 @@
 #MIT License
 #
-#Copyright (c) 2016 MTA SZTAKI
+#Copyright (c) 2018 MTA SZTAKI
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -20,16 +20,24 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-# Basic
+# Add all header and cpp files in the directory to the project
+set (HEADERS
+	ApeSceneMakerMacro.h
+	)
 
-option(APE_MACRO_UserInput "Use UserInputMacro?" ON )
-if (${APE_MACRO_UserInput})
-	add_subdirectory (userInput)
-endif ()
+set (SOURCES 
+	ApeSceneMakerMacro.cpp
+	)
 
-option(APE_MACRO_SceneMaker "Use SceneMakerMacro?" ON )
-if (${APE_MACRO_SceneMaker})
-	add_subdirectory (sceneMaker)
-endif ()
+include_directories(
+	${PROJECT_SOURCE_DIR}/common/include 
+	)
 
+add_library (ApeSceneMakerMacro SHARED ${SOURCES} ${HEADERS})
 
+# Link with dependency libraries
+target_link_libraries (ApeSceneMakerMacro ApeSceneManager ApeEventManager ApeLogManager)
+
+set_property (TARGET ApeSceneMakerMacro PROPERTY COMPILE_DEFINITIONS BUILDING_APE_SCENEMAKERMACRO_DLL APE_SOURCE_DIR="${APE_SOURCE_DIR}")
+
+set_property (TARGET ApeSceneMakerMacro PROPERTY FOLDER "Macros")
